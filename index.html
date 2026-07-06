@@ -599,8 +599,8 @@ function drawStage(t){
   const kneeR=ik(hipR[0],hipR[1],footR[0],footR[1],th*FT,sh*FT,+1);
 
   // shoulders tilt through the swing; head stays put
-  const tilt=0.42*(1-prog)-0.14;
-  const shW=0.56*FT;
+  const tilt=0.30*(1-prog)-0.10;
+  const shW=0.42*FT;
   const shL=[O[0]-Math.cos(tilt)*shW, O[1]+Math.sin(tilt)*shW];
   const shR=[O[0]+Math.cos(tilt)*shW, O[1]-Math.sin(tilt)*shW];
   const headX=O[0]+(0.10-f.X*0.12)*FT, headY=O[1]-0.62*FT, headR=0.30*FT;
@@ -611,14 +611,14 @@ function drawStage(t){
   const elbowR=ik(shR[0],shR[1],Hh[0],Hh[1],armSegR,armSegR,+1);
   limb(sctx,[shR,elbowR,[Hh[0],Hh[1]]],0.17*FT,'rgba(168,58,34,.62)');
 
-  // torso: pelvis -> shoulders, slightly curved
-  sctx.strokeStyle=INK; sctx.lineWidth=0.46*FT; sctx.lineCap='round';
-  sctx.beginPath(); sctx.moveTo(pelX,pelY);
-  sctx.quadraticCurveTo(pelX+(O[0]-pelX)*0.2, (pelY+O[1])/2, O[0],O[1]+0.1*FT);
-  sctx.stroke();
-  // pelvis
-  sctx.strokeStyle=INK; sctx.lineWidth=0.30*FT;
-  sctx.beginPath(); sctx.moveTo(hipL[0],hipL[1]); sctx.lineTo(hipR[0],hipR[1]); sctx.stroke();
+  // torso: one filled slab from the hip line up to the shoulder yoke,
+  // so the arm roots are always corners of the body
+  sctx.fillStyle=INK; sctx.strokeStyle=INK;
+  sctx.lineWidth=0.20*FT; sctx.lineJoin='round'; sctx.lineCap='round';
+  sctx.beginPath();
+  sctx.moveTo(hipL[0],hipL[1]); sctx.lineTo(hipR[0],hipR[1]);
+  sctx.lineTo(shR[0],shR[1]);   sctx.lineTo(shL[0],shL[1]);
+  sctx.closePath(); sctx.fill(); sctx.stroke();
 
   // lead leg (in front)
   limb(sctx,[hipL,kneeL,footL],0.21*FT,INK);
