@@ -106,7 +106,7 @@
 <header>
   <h1>The <em>Perfect</em> Swing</h1>
   <div class="sub">A two-rod model of the downswing, after Theodore&nbsp;P.&nbsp;Jorgensen, <i>The Physics of Golf</i> (2nd&nbsp;ed., 1999)</div>
-  <div class="vol">lib553 · swing laboratory<br>front view · plane projected</div>
+  <div class="vol">lib553 · swing laboratory<br>plane-of-swing view</div>
 </header>
 
 <div class="layout">
@@ -186,7 +186,7 @@
   <div class="col-mid">
     <div class="stage">
       <canvas id="stage" width="980" height="820"></canvas>
-      <div class="plate">Stroboscopic record · front view · flash interval 5 ms</div>
+      <div class="plate">Stroboscopic record · plane of swing · flash interval 5 ms</div>
       <div class="stamp" id="stamp">impact</div>
     </div>
     <div class="transport">
@@ -238,7 +238,7 @@
 <h2>The Manual — read this top to bottom</h2>
 <div class="prologue">
 This machine is Jorgensen's whole theory of the golf swing: the golfer is reduced to <b>two rigid rods</b>.
-Rod&nbsp;A (drawn as the <b>red lead arm</b>) runs from a hub between the shoulders down to the wrists.
+Rod&nbsp;A (the <b>red rod</b>, the arms) runs from a hub between the shoulders down to the wrists.
 Rod&nbsp;C (the <b>club</b>) hangs off it at a hinge — the wrists. The golfer can do exactly three things:
 twist the arms about the hub, slide the hub sideways with the hips, and decide what the wrist hinge does.
 Everything else — the legs, the head, the trail arm — is drawn only to make the robot look like a person;
@@ -505,13 +505,13 @@ function syncRelMode(){
 const stage=$('stage'), sctx=stage.getContext('2d');
 let SIM=null, STD_SIM=null, playT=null, playing=false, lastFrame=0;
 
-const SQ=0.74;      // swing plane projected onto the front view
 function world2px(){
+  // world: x in [-4.4, +5.8] ft, y in [+4.2, -6.0] ft around hub origin
   const W=stage.width, H=stage.height;
-  const s=Math.min(W/9.6, H/8.6);
-  return { s, ox:W*0.5 - 0.55*s, oy:H*0.42 };
+  const s=Math.min(W/10.4, H/10.4);
+  return { s, ox:W*0.5 - 0.7*s, oy:H*0.5 - 0.9*s };
 }
-const px=(m,x,y)=>[m.ox+x*m.s, m.oy-y*SQ*m.s];
+const px=(m,x,y)=>[m.ox+x*m.s, m.oy-y*m.s];
 
 function frameAt(sim,t){
   const tr=sim.trace;
@@ -522,48 +522,29 @@ function frameAt(sim,t){
   return tr[lo];
 }
 
-function ik(ax,ay,bx,by,l1,l2,bend){
-  // 2-bone IK: joint between (a) and (b); bend = +1/-1 side
-  let dx=bx-ax, dy=by-ay, d=Math.hypot(dx,dy);
-  const dm=Math.min(d, l1+l2-1e-4); dx*=dm/d; dy*=dm/d; d=dm;
-  const a1=Math.acos(Math.min(1,Math.max(-1,(l1*l1+d*d-l2*l2)/(2*l1*d))));
-  const ang=Math.atan2(dy,dx)+bend*a1;
-  return [ax+l1*Math.cos(ang), ay+l1*Math.sin(ang)];
-}
-function limb(c,pts,w,color){
-  c.strokeStyle=color; c.lineWidth=w; c.lineCap='round'; c.lineJoin='round';
-  c.beginPath(); c.moveTo(pts[0][0],pts[0][1]);
-  for(let i=1;i<pts.length;i++) c.lineTo(pts[i][0],pts[i][1]);
-  c.stroke();
-}
 function drawStage(t){
   const m=world2px(), W=stage.width, H=stage.height;
   sctx.clearRect(0,0,W,H);
   const f=frameAt(SIM,t), tEnd=SIM.impact.t;
-  const FT=m.s;                                  // px per ft (horizontal)
-  const INK='#211d14', RED='#a83a22', PAPER='#f2ead8';
 
-  // ---- ground & ball ----
+  // ground line + ball
+  sctx.strokeStyle='#8d7f60'; sctx.lineWidth=1;
   const gy=px(m,0,SIM.impact.cy)[1];
-  sctx.strokeStyle='#8d7f60'; sctx.lineWidth=1.5;
-  sctx.beginPath(); sctx.moveTo(14,gy+8); sctx.lineTo(W-14,gy+8); sctx.stroke();
-  sctx.strokeStyle='rgba(141,127,96,.5)'; sctx.lineWidth=1;
-  for(let x=20;x<W-20;x+=26){ sctx.beginPath(); sctx.moveTo(x,gy+8); sctx.lineTo(x-7,gy+15); sctx.stroke(); }
+  sctx.beginPath(); sctx.moveTo(14,gy+7); sctx.lineTo(W-14,gy+7); sctx.stroke();
   const [bx,by]=px(m,SIM.impact.cx,SIM.impact.cy);
-  // tee
-  sctx.strokeStyle=INK; sctx.lineWidth=1.2;
-  sctx.beginPath(); sctx.moveTo(bx,by+4); sctx.lineTo(bx,gy+7); sctx.stroke();
+  sctx.fillStyle='#fff'; sctx.strokeStyle='#211d14'; sctx.lineWidth=1.4;
+  sctx.beginPath(); sctx.arc(bx,by+1,5.2,0,7); sctx.fill(); sctx.stroke();
 
-  // ---- standard-swing ghost strobe ----
+  // standard-swing ghost strobe (dashed memory of the book's photo)
   if(STD_SIM){
-    sctx.fillStyle='rgba(44,86,112,.28)';
+    sctx.fillStyle='rgba(44,86,112,.30)';
     for(const p of STD_SIM.trace){
       if(Math.round(p.t*1000)%5) continue;
       const [x,y]=px(m,p.cx,p.cy);
       sctx.fillRect(x-1,y-1,2,2);
     }
   }
-  // ---- strobe record of this swing ----
+  // strobe dots of the current swing, clubhead + hands, up to time t
   for(const p of SIM.trace){
     if(p.t>t) break;
     if(Math.round(p.t*1000)%5) continue;
@@ -572,97 +553,44 @@ function drawStage(t){
     sctx.fillStyle=`rgba(33,29,20,${0.85-0.45*age})`;
     sctx.beginPath(); sctx.arc(x,y,2.1,0,7); sctx.fill();
     const [hx,hy]=px(m,p.hx,p.hy);
-    sctx.fillStyle=`rgba(168,58,34,${0.6-0.35*age})`;
-    sctx.beginPath(); sctx.arc(hx,hy,1.5,0,7); sctx.fill();
+    sctx.fillStyle=`rgba(168,58,34,${0.7-0.4*age})`;
+    sctx.beginPath(); sctx.arc(hx,hy,1.6,0,7); sctx.fill();
   }
-  // faint model skeleton every 20 ms (the two rods of the theory)
-  sctx.strokeStyle='rgba(33,29,20,.10)'; sctx.lineWidth=1;
+  // faint stick diagrams every 20 ms (after Fig 3.3)
+  sctx.strokeStyle='rgba(33,29,20,.14)'; sctx.lineWidth=1;
   for(const p of SIM.trace){
     if(p.t>t) break;
     if(Math.round(p.t*1000)%20) continue;
     const o=px(m,p.X,0), h=px(m,p.hx,p.hy), c=px(m,p.cx,p.cy);
     sctx.beginPath(); sctx.moveTo(o[0],o[1]); sctx.lineTo(h[0],h[1]); sctx.lineTo(c[0],c[1]); sctx.stroke();
   }
-
-  // ---- the golfer ----
-  const O=px(m,f.X,0);                    // mid-shoulders (the hub of the model)
-  const Hh=px(m,f.hx,f.hy);               // hands / wrist hinge
-  const C=px(m,f.cx,f.cy);                // clubhead
-  const prog=1-Math.max(0,Math.min(1,f.phi1/(SIM.trace[0].phi1||1)));  // 0 top -> 1 impact
-
-  // pelvis follows the hub shift (hips drive the shift), feet stay planted
-  const pelX=m.ox+(f.X*0.80)*FT, pelY=O[1]+1.62*FT;
-  const footL=[m.ox-1.30*FT, gy+6], footR=[m.ox+1.05*FT, gy+6];
-  const hipL=[pelX-0.26*FT,pelY], hipR=[pelX+0.26*FT,pelY];
-  const legL=(gy+6-pelY)/FT, th=legL*0.55, sh=legL*0.56;
-  const kneeL=ik(hipL[0],hipL[1],footL[0],footL[1],th*FT,sh*FT,-1);
-  const kneeR=ik(hipR[0],hipR[1],footR[0],footR[1],th*FT,sh*FT,+1);
-
-  // shoulders tilt through the swing; head stays put
-  const tilt=0.30*(1-prog)-0.10;
-  const shW=0.42*FT;
-  const shL=[O[0]-Math.cos(tilt)*shW, O[1]+Math.sin(tilt)*shW];
-  const shR=[O[0]+Math.cos(tilt)*shW, O[1]-Math.sin(tilt)*shW];
-  const headX=O[0]+(0.10-f.X*0.12)*FT, headY=O[1]-0.62*FT, headR=0.30*FT;
-
-  // trail leg + trail arm first (behind)
-  limb(sctx,[hipR,kneeR,footR],0.21*FT,'rgba(33,29,20,.72)');
-  const armSegR=Math.max(0.92*FT,Math.hypot(Hh[0]-shR[0],Hh[1]-shR[1])/2+0.05*FT);
-  const elbowR=ik(shR[0],shR[1],Hh[0],Hh[1],armSegR,armSegR,+1);
-  limb(sctx,[shR,elbowR,[Hh[0],Hh[1]]],0.17*FT,'rgba(168,58,34,.62)');
-
-  // torso: one filled slab from the hip line up to the shoulder yoke,
-  // so the arm roots are always corners of the body
-  sctx.fillStyle=INK; sctx.strokeStyle=INK;
-  sctx.lineWidth=0.20*FT; sctx.lineJoin='round'; sctx.lineCap='round';
+  // hub track
+  sctx.strokeStyle='rgba(138,109,29,.6)'; sctx.setLineDash([3,3]);
   sctx.beginPath();
-  sctx.moveTo(hipL[0],hipL[1]); sctx.lineTo(hipR[0],hipR[1]);
-  sctx.lineTo(shR[0],shR[1]);   sctx.lineTo(shL[0],shL[1]);
-  sctx.closePath(); sctx.fill(); sctx.stroke();
+  const o0=px(m,SIM.trace[0].X,0), o1=px(m,f.X,0);
+  sctx.moveTo(o0[0],o0[1]); sctx.lineTo(o1[0],o1[1]); sctx.stroke(); sctx.setLineDash([]);
 
-  // lead leg (in front)
-  limb(sctx,[hipL,kneeL,footL],0.21*FT,INK);
-  // shoes
-  sctx.strokeStyle=INK; sctx.lineWidth=0.13*FT;
-  sctx.beginPath(); sctx.moveTo(footL[0]-0.14*FT,footL[1]); sctx.lineTo(footL[0]-0.34*FT,footL[1]); sctx.stroke();
-  sctx.beginPath(); sctx.moveTo(footR[0]+0.14*FT,footR[1]); sctx.lineTo(footR[0]+0.34*FT,footR[1]); sctx.stroke();
-
-  // head + cap
-  sctx.fillStyle=PAPER; sctx.strokeStyle=INK; sctx.lineWidth=2.2;
-  sctx.beginPath(); sctx.arc(headX,headY,headR,0,7); sctx.fill(); sctx.stroke();
-  sctx.fillStyle=INK;
-  sctx.beginPath(); sctx.arc(headX,headY,headR*1.02,Math.PI*1.12,Math.PI*1.88);
-  sctx.closePath(); sctx.fill();
-  sctx.fillRect(headX-headR*1.45,headY-headR*0.52,headR*1.1,headR*0.22);
-  // neck
-  sctx.strokeStyle=INK; sctx.lineWidth=0.16*FT;
-  sctx.beginPath(); sctx.moveTo(headX,headY+headR*0.85); sctx.lineTo(O[0],O[1]-0.12*FT); sctx.stroke();
-
-  // club (under lead arm)
-  sctx.strokeStyle=INK; sctx.lineWidth=3.2; sctx.lineCap='round';
+  // current arm + club
+  const O=px(m,f.X,0), Hh=px(m,f.hx,f.hy), C=px(m,f.cx,f.cy);
+  sctx.lineCap='round';
+  sctx.strokeStyle='#a83a22'; sctx.lineWidth=5;
+  sctx.beginPath(); sctx.moveTo(O[0],O[1]); sctx.lineTo(Hh[0],Hh[1]); sctx.stroke();
+  sctx.strokeStyle='#211d14'; sctx.lineWidth=3.4;
   sctx.beginPath(); sctx.moveTo(Hh[0],Hh[1]); sctx.lineTo(C[0],C[1]); sctx.stroke();
-  // clubhead
-  const ca=Math.atan2(C[1]-Hh[1],C[0]-Hh[0]);
-  sctx.fillStyle=INK;
-  sctx.beginPath(); sctx.ellipse(C[0],C[1],0.15*FT,0.075*FT,ca,0,7); sctx.fill();
+  // hub, wrists, head
+  sctx.fillStyle='#211d14';
+  sctx.beginPath(); sctx.arc(O[0],O[1],5.5,0,7); sctx.fill();
+  sctx.fillStyle='#f2ead8'; sctx.strokeStyle='#211d14'; sctx.lineWidth=2;
+  sctx.beginPath(); sctx.arc(Hh[0],Hh[1],4.4,0,7); sctx.fill(); sctx.stroke();
+  sctx.fillStyle='#211d14';
+  sctx.beginPath(); sctx.arc(C[0],C[1],6.6,0,7); sctx.fill();
 
-  // lead arm (the red rod A of the theory)
-  const armSegL=Math.max(0.92*FT,Math.hypot(Hh[0]-shL[0],Hh[1]-shL[1])/2+0.04*FT);
-  const elbowL=ik(shL[0],shL[1],Hh[0],Hh[1],armSegL,armSegL,-1);
-  limb(sctx,[shL,elbowL,[Hh[0],Hh[1]]],0.17*FT,RED);
-  // hands
-  sctx.fillStyle=PAPER; sctx.strokeStyle=INK; sctx.lineWidth=1.8;
-  sctx.beginPath(); sctx.arc(Hh[0],Hh[1],0.09*FT,0,7); sctx.fill(); sctx.stroke();
-
-  // ball on top of tee (drawn after body so it stays visible pre-impact)
-  sctx.fillStyle='#fff'; sctx.strokeStyle=INK; sctx.lineWidth=1.4;
-  sctx.beginPath(); sctx.arc(bx,by,5.2,0,7); sctx.fill(); sctx.stroke();
-
-  // ---- annotations ----
+  // annotations
   sctx.font='11px '+getComputedStyle(document.body).getPropertyValue('--mono');
   sctx.fillStyle='#4a4232';
-  sctx.fillText('β = '+f.beta.toFixed(1)+'°', Hh[0]+0.35*FT, Hh[1]+0.05*FT);
-  sctx.fillStyle=RED;
+  sctx.fillText('O (hub)', O[0]+9, O[1]-8);
+  sctx.fillText('β = '+f.beta.toFixed(1)+'°', Hh[0]+10, Hh[1]+4);
+  sctx.fillStyle='#a83a22';
   sctx.fillText((f.speed*0.6818).toFixed(0)+' mph', C[0]+12, C[1]+4);
   if(SIM.tRelease!=null && t>=SIM.tRelease){
     sctx.fillStyle='rgba(44,86,112,.9)';
